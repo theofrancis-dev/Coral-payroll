@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from payroll.payroll_service import settings
 
-class HR(models.Model):
+class HR(SoftDeletableModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     hr_id = models.CharField(max_length=10, unique=True)
@@ -27,7 +27,7 @@ class SalaryJobType(models.Model):
     def __str__(self):
         return self.job_type
 
-class Employee(models.Model):
+class Employee(SoftDeletableModel):
     JOB_TYPE_CHOICES = [
         ('Senior Developer', 'Senior Developer'),
         ('Junior Developer', 'Junior Developer'),
@@ -155,7 +155,7 @@ class TimeEntry(models.Model):
     
     # models.py (create a new app called "core" or put in employees)
 
-class Company(models.Model):
+class Company(SoftDeletableModel):
     name = models.CharField(max_length=200)
     legal_name = models.CharField(max_length=200, blank=True)
     tax_id = models.CharField(max_length=50, blank=True)  # EIN for Florida
