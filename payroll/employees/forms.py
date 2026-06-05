@@ -31,4 +31,5 @@ class SalaryJobTypeForm(forms.ModelForm):
         fields = ['job_type', 'salary', 'deduction_money']
 
 class PayrollForm(forms.Form):
-    employee = forms.ModelChoiceField(queryset=Employee.objects.all())
+    # employee = forms.ModelChoiceField(queryset=Employee.objects.all()) # load all employees at once, which can be inefficient if there are many employees. Instead, we can load employees based on the HR's selection.
+    employee = forms.ModelChoiceField(queryset=Employee.objects.none())  # Load employees based on HR selection dinamically

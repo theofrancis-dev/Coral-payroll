@@ -5,6 +5,10 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils import timezone
 from datetime import timedelta
+from django.db import models
+from django.utils import timezone
+
+from payroll.payroll_service import settings
 
 class HR(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -119,3 +123,99 @@ class Payroll(models.Model):
 
     def __str__(self):
         return f"{self.employee.name} - {self.month.strftime('%B %Y')}"
+
+from django.db import models
+from django.utils import timezone
+
+class TimeEntry(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='time_entries')
+    date = models.DateField()
+    hours_worked = models.DecimalField(max_digits=5, decimal_places=2, default=0)  # e.g. 8.5
+    notes = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(HR, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        unique_together = ('employee', 'date')
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.employee.name} - {self.date} ({self.hours_worked}h)"
+    
+    # any roll user roll can be related to one or more companies, and each company can have multiple users with different roles. 
+    # This allows for a flexible and scalable system where users can have different permissions and access levels based on their role within the company.
+    
+    # models.py (create a new app called "core" or put in employees)
+
+class Company(models.Model):
+    name = models.CharField(max_length=200)
+    legal_name = models.CharField(max_length=200, blank=True)
+    tax_id = models.CharField(max_length=50, blank=True)  # EIN for Florida
+    address = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
+
+
+class UserRole(models.TextChoices):
+    OWNER = 'owner', 'Company Owner'
+    HR = 'hr', 'HR Manager'
+    EMPLOYEE = 'employee', 'Employee'
+
+
+class UserCompany(models.Model):
+    """This is the key table for multi-company support"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    role = models.CharField(max_length=20, choices=UserRole.choices)
+    is_active = models.BooleanField(default=True)
+    date_joined = models.DateField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'company')
+        # Example: One user can't be Owner and Employee in same company
+
+    def __str__(self):
+        return f"{self.user} - {self.company} ({self.role})"
+    
+    ## SOFT DELETE: Instead of deleting records, we can set is_active=False. This way we keep historical data and can reactivate if needed.
+
+
+class SoftDeletableModel(models.Model):
+    """
+    Base model for Soft Delete functionality
+    """
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='deleted_%(class)s'
+    )
+
+    class Meta:
+        abstract = True
+
+    def delete(self, using=None, keep_parents=False, **kwargs):
+        """Override delete to do soft delete"""
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.deleted_by = kwargs.get('deleted_by', None)  # Pass user who deleted
+        self.save()
+
+    def hard_delete(self):
+        """Real permanent delete"""
+        super().delete()
+    

@@ -1,4 +1,6 @@
 from django.urls import path
+from django.contrib import admin
+
 from . import views
 
 urlpatterns = [
@@ -18,4 +20,5 @@ urlpatterns = [
     path('add_salary_job_type/', views.add_salary_job_type, name='add_salary_job_type'),
     path('calculate_payroll/', views.calculate_payroll, name='calculate_payroll'),
     path('show_payroll_details/', views.show_payroll_details, name='show_payroll_details'),
+    path('admin/', admin.site.urls),
 ]
