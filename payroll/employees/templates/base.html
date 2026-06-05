@@ -1,0 +1,15 @@
+{% if request.user.is_authenticated and request.current_company %}
+<div class="company-selector">
+    <form method="post" action="{% url 'switch_company' %}">
+        {% csrf_token %}
+        <select name="company_id" onchange="this.form.submit()">
+            {% for uc in request.user.usercompany_set.all %}
+                <option value="{{ uc.company.id }}"
+                    {% if uc.company == request.current_company %}selected{% endif %}>
+                    {{ uc.company.name }} ({{ uc.get_role_display }})
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+{% endif %}

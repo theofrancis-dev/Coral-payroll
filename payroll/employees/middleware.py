@@ -1,6 +1,8 @@
 from django.utils.deprecation import MiddlewareMixin
 from django.shortcuts import redirect
 
+from payroll.employees.models import Company, UserCompany
+
 class CompanyMiddleware(MiddlewareMixin):
     def process_request(self, request):
         if not request.user.is_authenticated:
